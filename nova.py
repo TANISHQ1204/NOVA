@@ -1,11 +1,13 @@
 from dotenv import load_dotenv
 import os
+from voice import hear
 
 load_dotenv()
 
 assistant_name=os.getenv("ASSISTANT_NAME","NOVA")
 owner_name=os.getenv("OWNER_NAME","SIR")
 version=os.getenv("VERSION","1.0")
+voice_mode=True
 
 def greet():
     print(f"Initializing {assistant_name} v{version}...")
@@ -45,7 +47,19 @@ def main():
 
     while True:
         try:
-            user_input=input(f"\n{owner_name}: ")
+            if voice_mode:
+                print(f"\n{assistant_name}: Listening...")
+                user_input=hear()
+            else:
+                user_input=input(f"\n{owner_name}: ")
+            
+            if user_input=="__unknown__":
+                print(f"NOVA: I couldn't understand that, {owner_name}. Please try again.")
+                continue
+            elif user_input=="__error__":
+                print(f"NOVA: I'm having trouble reaching my servers, {owner_name}. Check your internet.")
+                continue
+
             response=respond(user_input)
             
             if response=="EXIT":
