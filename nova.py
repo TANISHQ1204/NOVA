@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 import os
 from voice import hear
 from speaker import speak
+from hotkey import start_hotkey_listener, stop_hotkey_listener
 
 load_dotenv()
 
@@ -9,6 +10,12 @@ assistant_name=os.getenv("ASSISTANT_NAME","NOVA")
 owner_name=os.getenv("OWNER_NAME","SIR")
 version=os.getenv("VERSION","1.0")
 voice_mode=True
+nova_active=False
+
+def activate_nova():
+    global nova_active
+    if not nova_active:
+        nova_active = True
 
 def greet():
     print(f"Initializing {assistant_name} v{version}...")
@@ -45,15 +52,23 @@ responses = {
     
 def main():
     greet()
-
+    start_hotkey_listener(activate_nova)
+    speak("Press F9 to activate me.")
+    
     while True:
         try:
-            if voice_mode:
-                print(f"\n{assistant_name}: Listening...")
+            global nova_active
+            if voice_mode and nova_active:
+                speak("Yes? I'm listening.")
                 user_input=hear()
+                nova_active=False
+            elif voice_mode and not nova_active:
+                import time
+                time.sleep(0.1)
+                continue
             else:
                 user_input=input(f"\n{owner_name}: ")
-            
+
             if user_input=="__unknown__":
                 speak(f"I couldn't understand that, {owner_name}. Please try again.")
                 continue
@@ -62,14 +77,17 @@ def main():
                 continue
 
             response=respond(user_input)
-            
+
             if response=="EXIT":
                 speak(f"Shutting down. Goodbye, {owner_name}.")
+                stop_hotkey_listener()
                 break
-            
+
             speak(response)
+
         except KeyboardInterrupt:
             speak(f"Emergency shutdown detected. Goodbye, {owner_name}.")
+            stop_hotkey_listener()
             break
         except Exception as e:
             speak(f"Something went wrong. Error: {e}")

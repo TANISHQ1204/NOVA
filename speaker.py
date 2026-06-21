@@ -30,5 +30,9 @@ def _play_audio():
 
 def speak(text):
     print(f"NOVA: {text}")
+    try:
+        pygame.mixer.quit()
+    except:
+        pass
     asyncio.run(_generate_speech(text))
     _play_audio()
