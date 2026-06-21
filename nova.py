@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 import os
 from voice import hear
+from speaker import speak
 
 load_dotenv()
 
@@ -11,7 +12,7 @@ voice_mode=True
 
 def greet():
     print(f"Initializing {assistant_name} v{version}...")
-    print(f"Welcome back {owner_name}.")
+    speak(f"Welcome back {owner_name}.")
     print(f"-"*40)
 
 def respond(user_input):
@@ -54,25 +55,25 @@ def main():
                 user_input=input(f"\n{owner_name}: ")
             
             if user_input=="__unknown__":
-                print(f"NOVA: I couldn't understand that, {owner_name}. Please try again.")
+                speak(f"I couldn't understand that, {owner_name}. Please try again.")
                 continue
             elif user_input=="__error__":
-                print(f"NOVA: I'm having trouble reaching my servers, {owner_name}. Check your internet.")
+                speak(f"I'm having trouble reaching my servers, {owner_name}. Check your internet.")
                 continue
 
             response=respond(user_input)
             
             if response=="EXIT":
-                print(f"\nNOVA: Shutting down. Goodbye, {owner_name}.")
+                speak(f"Shutting down. Goodbye, {owner_name}.")
                 break
             
-            print(f"\nNOVA: {response}")
+            speak(response)
         except KeyboardInterrupt:
-            print(f"\nNOVA: Emergency shutdown detected. Goodbye, {owner_name}.")
+            speak(f"Emergency shutdown detected. Goodbye, {owner_name}.")
             break
         except Exception as e:
-            print(f"\nNOVA: Something went wrong. Error: {e}")
-            print("NOVA: Restarting loop...")
+            speak(f"Something went wrong. Error: {e}")
+            speak("Restarting loop...")
 
 if __name__=="__main__":
     main()
