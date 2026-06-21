@@ -44,14 +44,21 @@ def main():
     greet()
 
     while True:
-        user_input=input(f"\n{owner_name}: ")
-        response=respond(user_input)
-
-        if response=="EXIT":
-            print(f"\n NOVA : Shutting Down. Goodbye, {owner_name}.")
+        try:
+            user_input=input(f"\n{owner_name}: ")
+            response=respond(user_input)
+            
+            if response=="EXIT":
+                print(f"\nNOVA: Shutting down. Goodbye, {owner_name}.")
+                break
+            
+            print(f"\nNOVA: {response}")
+        except KeyboardInterrupt:
+            print(f"\nNOVA: Emergency shutdown detected. Goodbye, {owner_name}.")
             break
-
-        print(f"\n NOVA: {response}")
+        except Exception as e:
+            print(f"\nNOVA: Something went wrong. Error: {e}")
+            print("NOVA: Restarting loop...")
 
 if __name__=="__main__":
     main()
