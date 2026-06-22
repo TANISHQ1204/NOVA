@@ -1,5 +1,7 @@
 from dotenv import load_dotenv
 import os
+import time
+import datetime
 from voice import hear
 from speaker import speak
 from hotkey import start_hotkey_listener, stop_hotkey_listener
@@ -22,22 +24,6 @@ def greet():
     speak(f"Welcome back {owner_name}.")
     print(f"-"*40)
 
-def respond(user_input):
-    user_input=user_input.lower().strip()
-
-    if not user_input:
-        return f"I didn't hear anything, {owner_name}."
-    
-    for keyword in responses:
-        if keyword in user_input:
-            if responses[keyword]=="fetching_time":
-                import datetime
-                now=datetime.datetime.now()
-                return f"Current time is {now.strftime('%H:%M')}, {owner_name}."
-            return responses[keyword]
-    
-    return f"I don't know how to respond to that yet, {owner_name}. I'm still learning."
-
 responses = {
     "hello": f"Hello, {owner_name}. How can I assist you today?",
     "how are you": f"All systems functioning perfectly, {owner_name}.",
@@ -47,43 +33,85 @@ responses = {
     "good morning": f"Good Morning!, {owner_name}.",
     "weather": f"I can't check weather yet but will learn soon.",
     "joke": f"sarcastic laugh.",
-    "quit": f"EXIT",
+    "quit": "EXIT",
+    "sleep": "SLEEP",
+    "stop listening": "SLEEP",
 }
+
+def respond(user_input):
+    user_input=user_input.lower().strip()
+
+    if not user_input:
+        return f"I didn't hear anything, {owner_name}."
+    
+    for keyword in responses:
+        if keyword in user_input:
+            if responses[keyword]=="fetching_time":
+                now=datetime.datetime.now()
+                return f"Current time is {now.strftime('%H:%M')}, {owner_name}."
+            return responses[keyword]
+    
+    return f"I don't know how to respond to that yet, {owner_name}. I'm still learning."
     
 def main():
+    global nova_active
     greet()
     start_hotkey_listener(activate_nova)
     speak("Press F9 to activate me.")
     
     while True:
         try:
-            global nova_active
             if voice_mode and nova_active:
                 speak("Yes? I'm listening.")
-                user_input=hear()
-                nova_active=False
+                time.sleep(0.5)
+                while nova_active:
+                    user_input=hear()
+
+                    if user_input=="__unknown__":
+                        speak(f"I couldn't understand that, {owner_name}. Please try again.")
+                        continue
+                    elif user_input=="__error__":
+                        speak(f"I'm having trouble reaching my servers, {owner_name}. Check your internet.")
+                        continue
+
+                    response=respond(user_input)
+
+                    if response=="EXIT":
+                        speak(f"Shutting down. Goodbye, {owner_name}.")
+                        stop_hotkey_listener()
+                        return
+                    
+                    if response=="SLEEP":
+                        speak(f"Going to sleep. Press F9 to wake me up {owner_name}.")
+                        nova_active=False
+                        break
+
+                    speak(response)
+                    time.sleep(0.3)
+
+                    
             elif voice_mode and not nova_active:
-                import time
                 time.sleep(0.1)
                 continue
+
             else:
-                user_input=input(f"\n{owner_name}: ")
-
-            if user_input=="__unknown__":
-                speak(f"I couldn't understand that, {owner_name}. Please try again.")
-                continue
-            elif user_input=="__error__":
-                speak(f"I'm having trouble reaching my servers, {owner_name}. Check your internet.")
-                continue
-
-            response=respond(user_input)
-
-            if response=="EXIT":
-                speak(f"Shutting down. Goodbye, {owner_name}.")
-                stop_hotkey_listener()
-                break
-
-            speak(response)
+                user_input = input(f"\n{owner_name}: ")
+                
+                if not user_input:
+                    continue
+                
+                response = respond(user_input)
+                
+                if response == "EXIT":
+                    speak(f"Shutting down. Goodbye, {owner_name}.")
+                    stop_hotkey_listener()
+                    break
+                
+                if response == "SLEEP":
+                    speak(f"Going to sleep, {owner_name}.")
+                    continue
+                
+                speak(response)
 
         except KeyboardInterrupt:
             speak(f"Emergency shutdown detected. Goodbye, {owner_name}.")
