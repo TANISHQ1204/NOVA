@@ -6,6 +6,7 @@ from voice import hear
 from speaker import speak
 from hotkey import start_hotkey_listener, stop_hotkey_listener
 from api_test import get_weather
+from brain import ask_nova
 
 load_dotenv()
 
@@ -60,7 +61,7 @@ def respond(user_input):
 
             return responses[keyword]
     
-    return f"I don't know how to respond to that yet, {owner_name}. I'm still learning."
+    return ask_nova(user_input)
     
 def main():
     global nova_active
