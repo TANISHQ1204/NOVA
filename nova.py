@@ -5,6 +5,7 @@ import datetime
 from voice import hear
 from speaker import speak
 from hotkey import start_hotkey_listener, stop_hotkey_listener
+from api_test import get_weather
 
 load_dotenv()
 
@@ -31,7 +32,7 @@ responses = {
     "what can you do": "Right now I can answer basic questions. I am still learning, sir.",
     "time": "fetching_time",
     "good morning": f"Good Morning!, {owner_name}.",
-    "weather": f"I can't check weather yet but will learn soon.",
+    "weather": f"fetching_weather",
     "joke": f"sarcastic laugh.",
     "quit": "EXIT",
     "sleep": "SLEEP",
@@ -49,6 +50,14 @@ def respond(user_input):
             if responses[keyword]=="fetching_time":
                 now=datetime.datetime.now()
                 return f"Current time is {now.strftime('%H:%M')}, {owner_name}."
+            
+            if responses[keyword]=="fetching_weather":
+                city="Delhi"
+                result=get_weather(city)
+                if result is None:
+                    return f"I couldn't fetch the weather right now, {owner_name}."
+                return f"Current weather in {city} — {result['description']}, {result['temperature']} degrees celsius, feels like {result['feels_like']} degrees, humidity {result['humidity']} percent."
+
             return responses[keyword]
     
     return f"I don't know how to respond to that yet, {owner_name}. I'm still learning."
