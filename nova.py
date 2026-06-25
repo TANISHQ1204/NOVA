@@ -1,12 +1,11 @@
 from dotenv import load_dotenv
 import os
 import time
-import datetime
 from voice import hear
 from speaker import speak
 from hotkey import start_hotkey_listener, stop_hotkey_listener
 from api_test import get_weather
-from brain import ask_nova
+from brain import ask_nova, detect_intent, route_intent
 
 load_dotenv()
 
@@ -26,42 +25,20 @@ def greet():
     speak(f"Welcome back {owner_name}.")
     print(f"-"*40)
 
-responses = {
-    "hello": f"Hello, {owner_name}. How can I assist you today?",
-    "how are you": f"All systems functioning perfectly, {owner_name}.",
-    "your name": f"I am {assistant_name}, your personal AI assistant.",
-    "what can you do": "Right now I can answer basic questions. I am still learning, sir.",
-    "time": "fetching_time",
-    "good morning": f"Good Morning!, {owner_name}.",
-    "weather": f"fetching_weather",
-    "joke": f"sarcastic laugh.",
-    "quit": "EXIT",
-    "sleep": "SLEEP",
-    "stop listening": "SLEEP",
-}
-
 def respond(user_input):
     user_input=user_input.lower().strip()
 
     if not user_input:
         return f"I didn't hear anything, {owner_name}."
-    
-    for keyword in responses:
-        if keyword in user_input:
-            if responses[keyword]=="fetching_time":
-                now=datetime.datetime.now()
-                return f"Current time is {now.strftime('%H:%M')}, {owner_name}."
-            
-            if responses[keyword]=="fetching_weather":
-                city="Delhi"
-                result=get_weather(city)
-                if result is None:
-                    return f"I couldn't fetch the weather right now, {owner_name}."
-                return f"Current weather in {city} — {result['description']}, {result['temperature']} degrees celsius, feels like {result['feels_like']} degrees, humidity {result['humidity']} percent."
 
-            return responses[keyword]
+    if "quit" in user_input or "exit" in user_input:
+        return "EXIT"
     
-    return ask_nova(user_input)
+    if "sleep" in user_input or "stop listening" in user_input:
+        return "SLEEP"
+
+    intent = detect_intent(user_input)
+    return route_intent(intent, user_input)
     
 def main():
     global nova_active
