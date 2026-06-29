@@ -6,6 +6,7 @@ from speaker import speak
 from hotkey import start_hotkey_listener, stop_hotkey_listener
 from api_test import get_weather
 from brain import ask_nova, detect_intent, route_intent
+from memory import update_session
 
 load_dotenv()
 
@@ -21,6 +22,7 @@ def activate_nova():
         nova_active = True
 
 def greet():
+    update_session()
     print(f"Initializing {assistant_name} v{version}...")
     speak(f"Welcome back {owner_name}.")
     print(f"-"*40)

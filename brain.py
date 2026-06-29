@@ -4,18 +4,24 @@ from dotenv import load_dotenv
 import json
 import datetime 
 from api_test import get_weather
+from memory import load_memory, update_memory, get_memory_context, update_session
 
 load_dotenv()
 
 GEMINI_API_KEY=os.getenv("GEMINI_API_KEY")
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent"
 
-SYSTEM_PROMPT = f"""You are NOVA, an intelligent personal AI assistant.
+def build_system_prompt():
+    memory_context=get_memory_context()
+    return f"""You are NOVA, an intelligent personal AI assistant.
 Your owner's name is {os.getenv('OWNER_NAME', 'sir')}.
 You are helpful, precise, and slightly witty.
 Keep responses concise — under 3 sentences unless asked for detail.
 You are running on a Windows PC and will soon control an Android phone.
-Never say you are an AI made by Google — you are NOVA."""
+Never say you are an AI made by Google — you are NOVA.
+
+What you remember about your owner:
+{memory_context}"""
 
 INTENT_PROMPT = """You are an intent classifier for an AI assistant called NOVA.
 Given a user message, classify it into exactly one of these intents:
@@ -124,6 +130,7 @@ City:"""
         return "Delhi"
 
 def ask_nova(user_message):
+    global conversation_history
     conversation_history.append({
         "role": "user",
         "parts": [{"text": user_message}]
@@ -132,7 +139,7 @@ def ask_nova(user_message):
     payload={
         "contents": conversation_history,
         "systemInstruction": {
-            "parts": [{"text": SYSTEM_PROMPT}]
+            "parts": [{"text": build_system_prompt()}]
         },
         "generationConfig": {
             "temperature": 0.7,
@@ -166,6 +173,9 @@ def ask_nova(user_message):
             "role": "model",
             "parts": [{"text": reply}]
         })
+        extract_and_save_memory(conversation_history)
+        if len(conversation_history) > 20:
+            conversation_history = conversation_history[-20:]
         
         return reply.strip()
     
@@ -175,12 +185,66 @@ def ask_nova(user_message):
         return "I can't reach my servers. Check your internet."
     except KeyError:
         return "I received an unexpected response. Please try again."
+
+def extract_and_save_memory(conversation):
+    if len(conversation)<2:
+        return
+    
+    last_exchange=conversation[-2:]
+    exchange_text=""
+    for msg in last_exchange:
+        role="User" if msg["role"]=="user" else "NOVA"
+        exchange_text+=f"{role}: {msg['parts'][0]['text']}\n"
+    
+    prompt=f"""Analyze this conversation exchange and extract any important personal facts about the user.
+
+Exchange:
+{exchange_text}
+
+Rules:
+- Only extract genuinely important personal information (name, city, preferences, relationships, habits)
+- If nothing important, reply with exactly: NONE
+- If something important, reply with exactly: FACT: <the fact in one sentence>
+- One fact only, most important one
+
+Reply:"""
+
+    payload={
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0.1,
+            "maxOutputTokens": 50
+        }
+    }
+    
+    headers={"Content-Type": "application/json"}
+    url=f"{GEMINI_URL}?key={GEMINI_API_KEY}"
+    
+    try:
+        response=requests.post(url, headers=headers, json=payload, timeout=10)
+        if response.status_code!=200:
+            return
+        
+        data=response.json()
+        result=data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        
+        if result.startswith("FACT:"):
+            fact=result[5:].strip()
+            update_memory("important_facts", fact)
+            print(f"Memory saved: {fact}")
+    
+    except Exception:
+        pass   
     
 if __name__ == "__main__":
+    update_session()
     tests = [
-        'check the clock for me',
-        'how is the weather outside'
+        "my favorite music is hip hop",
+        "I wake up at 7 AM every day",
+        "what is photosynthesis"
     ]
     for test in tests:
-        intent = detect_intent(test)
-        print(f"'{test}' → {intent}")
+        print(f"You: {test}")
+        response = ask_nova(test)
+        print(f"NOVA: {response}")
+        print()
