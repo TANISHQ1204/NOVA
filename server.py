@@ -2,13 +2,29 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from brain import detect_intent, route_intent
 from memory import update_session
+from monitor import start_monitoring, set_notifier
+import asyncio
+from contextlib import asynccontextmanager
 
-app=FastAPI()
+@asynccontextmanager
+async def lifespan(app:FastAPI):
+    set_notifier(lambda msg:asyncio.create_task(push_to_clients(msg)))
+    start_monitoring()
+    yield
+
+app=FastAPI(lifespan=lifespan)
 
 class Command(BaseModel):
     message:str
 
 connected_clients=[]
+
+async def push_to_clients(message):
+    for client in connected_clients:
+        try:
+            await client.send_text(message)
+        except Exception:
+            connected_clients.remove(client)
 
 @app.get("/")
 def root():
@@ -33,7 +49,6 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data=await websocket.receive_text()
-            print(f"Received: {data}")
             intent=detect_intent(data)
             response=route_intent(intent,data)
             await websocket.send_text(response)

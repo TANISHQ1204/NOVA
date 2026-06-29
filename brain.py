@@ -319,7 +319,7 @@ if __name__ == "__main__":
     update_session()
     tests = [
 
-"open youtube"
+"shutdown"
     ]
     for test in tests:
         print(f"You: {test}")
