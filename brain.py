@@ -5,6 +5,7 @@ import json
 import datetime 
 from api_test import get_weather
 from memory import load_memory, update_memory, get_memory_context, update_session
+from automation import open_notepad, type_text, take_screenshot, close_notepad, open_browser
 
 load_dotenv()
 
@@ -93,7 +94,21 @@ def route_intent(intent, user_message):
         return ask_nova("Tell me a short funny joke. One liner preferred.")
     
     elif intent == "PC_CONTROL":
-        return "PC control is coming soon. I'll be able to control your computer shortly."
+        msg=user_message.lower()
+        if "notepad" in msg:
+            open_notepad()
+            return "Opened Notepad for you."
+        elif"close notepad" in msg:
+            close_notepad()
+            return "Closing Notepad."
+        elif "screenshot" in msg:
+            take_screenshot()
+            return "Screenshot taken and saved"
+        elif "browser" in msg or "edge" in msg:
+            open_browser()
+            return ("Opening browser for you")
+        else:
+            return "I heard a PC command but I'm not sure what to do yet."
     
     else:
         return ask_nova(user_message)
@@ -239,12 +254,11 @@ Reply:"""
 if __name__ == "__main__":
     update_session()
     tests = [
-        "my favorite music is hip hop",
-        "I wake up at 7 AM every day",
-        "what is photosynthesis"
+        "screenshot"
     ]
     for test in tests:
         print(f"You: {test}")
-        response = ask_nova(test)
+        intent=detect_intent(test)
+        print(f"Intent: {intent}")
+        response=route_intent(intent, test)
         print(f"NOVA: {response}")
-        print()
