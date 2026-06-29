@@ -93,22 +93,19 @@ def route_intent(intent, user_message):
     elif intent == "TELL_JOKE":
         return ask_nova("Tell me a short funny joke. One liner preferred.")
     
-    elif intent == "PC_CONTROL":
-        msg=user_message.lower()
-        if "notepad" in msg:
+    elif intent=="PC_CONTROL":
+        action,target=parse_pc_command(user_message)
+        if action=="open" and target=="notepad":
             open_notepad()
-            return "Opened Notepad for you."
-        elif"close notepad" in msg:
-            close_notepad()
-            return "Closing Notepad."
-        elif "screenshot" in msg:
-            take_screenshot()
-            return "Screenshot taken and saved"
-        elif "browser" in msg or "edge" in msg:
+            return "Opening Notepad for you."
+        elif action=="open" and target=="browser":
             open_browser()
-            return ("Opening browser for you")
+            return "Opening browser for you."
+        elif action=="screenshot":
+            take_screenshot()
+            return "Screenshot taken and saved."
         else:
-            return "I heard a PC command but I'm not sure what to do yet."
+            return f"I understood you want to {action} {target} but I can't do that yet."
     
     else:
         return ask_nova(user_message)
@@ -251,10 +248,57 @@ Reply:"""
     except Exception:
         pass   
     
+def parse_pc_command(user_message):
+    prompt=f"""Extract the action and target from this PC control command.
+
+            Reply in exactly this format:
+            ACTION: <action>
+            TARGET: <target>
+
+            Valid actions: open, close, screenshot, type
+            Valid targets: notepad, browser, screenshot, text
+
+            If you cannot extract a clear action and target, reply with:
+            ACTION: unknown
+            TARGET: unknown
+
+            Command: {user_message}"""
+    
+    payload={
+        "contents":[{"role":"user","parts":[{"text":prompt}]}],
+        "generationConfig":{
+            "temperature":0.1,
+            "maxOutputTokens":20
+        }
+    }
+
+    headers={"Content-Type":"application/json"}
+    url=f"{GEMINI_URL}?key={GEMINI_API_KEY}"
+
+    try:
+        response=requests.post(url,headers=headers,json=payload,timeout=10)
+        if response.status_code!=200:
+            return "unknown","unknown"
+        data=response.json()
+        result=data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        lines=[l.strip() for l in result.split("\n") if l.strip()]
+        action="unknown"
+        target="unknown"
+        for line in lines:
+            if line.upper().startswith("ACTION:"):
+                action=line.split(":")[1].strip().lower()
+            elif line.upper().startswith("TARGET:"):
+                target=line.split(":")[1].strip().lower()
+        return action,target
+    except Exception as e:
+        return "unknown","unknown"
+
 if __name__ == "__main__":
     update_session()
     tests = [
-        "screenshot"
+        "can you please open notepad",
+        "fire up the browser",
+        "take a screenshot",
     ]
     for test in tests:
         print(f"You: {test}")
