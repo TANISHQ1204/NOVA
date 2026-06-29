@@ -6,6 +6,7 @@ import datetime
 from api_test import get_weather
 from memory import load_memory, update_memory, get_memory_context, update_session
 from automation import open_notepad, type_text, take_screenshot, close_notepad, open_browser, open_app, shutdown_pc, restart_pc,get_battery,get_system_info,volume_mute,volume_down,volume_up
+from files import find_file, open_folder, get_disk_space, get_recent_files, get_system_info, open_file
 
 load_dotenv()
 
@@ -31,6 +32,7 @@ GET_TIME - user wants to know the current time
 GET_WEATHER - user wants weather information
 TELL_JOKE - user wants to hear something funny
 PC_CONTROL - user wants to control their computer
+FILE_SYSTEM - user wants to find files, check disk space, open folders, or get system info
 GENERAL - anything else
 
 Rules:
@@ -69,7 +71,7 @@ def detect_intent(user_message):
         data=response.json()
         intent=data["candidates"][0]["content"]["parts"][0]["text"].strip().upper()
 
-        valid_intents=["GET_TIME","GET_WEATHER","TELL_JOKE","PC_CONTROL","GENERAL"]
+        valid_intents=["GET_TIME","GET_WEATHER","TELL_JOKE","PC_CONTROL","FILE_SYSTEM","GENERAL"]
 
         if intent not in valid_intents:
             return "GENERAL"
@@ -128,6 +130,24 @@ def route_intent(intent, user_message):
             return get_system_info()
         else:
             return f"I understood you want to {action} {target} but I can't do that yet."
+        
+    elif intent=="FILE_SYSTEM":
+        action,target=parse_file_command(user_message)
+        if action=="disk":
+            return get_disk_space()
+        elif action=="recent":
+            return get_recent_files()
+        elif action=="sysinfo":
+            return get_system_info()
+        elif action=="open" and target:
+            return open_folder(target)
+        elif action=="find" and target:
+            filepath,message=find_file(target)
+            if filepath:
+                open_file(filepath)
+            return message
+        else:
+            return "I couldn't understand that file command."
     
     else:
         return ask_nova(user_message)
@@ -314,12 +334,58 @@ def parse_pc_command(user_message):
         return action,target
     except Exception as e:
         return "unknown","unknown"
+    
+def parse_file_command(user_message):
+    prompt=f"""Extract the action and target from this file system command.
+
+Reply in exactly this format:
+ACTION: <action>
+TARGET: <target>
+
+Valid actions: find, open, disk, recent, sysinfo
+Valid targets: filename or folder name or 'disk' or 'recent' or 'info'
+
+If unclear reply with:
+ACTION: unknown
+TARGET: unknown
+
+Command: {user_message}"""
+
+    payload={
+        "contents":[{"role":"user","parts":[{"text":prompt}]}],
+        "generationConfig":{
+            "temperature":0.1,
+            "maxOutputTokens":20
+        }
+    }
+    headers={"Content-Type":"application/json"}
+    url=f"{GEMINI_URL}?key={GEMINI_API_KEY}"
+
+    try:
+        response=requests.post(url,headers=headers,json=payload,timeout=10)
+        if response.status_code!=200:
+            return "unknown","unknown"
+        data=response.json()
+        result=data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        lines=[l.strip() for l in result.split("\n") if l.strip()]
+        action="unknown"
+        target="unknown"
+        for line in lines:
+            if line.upper().startswith("ACTION:"):
+                action=line.split(":")[1].strip().lower()
+            elif line.upper().startswith("TARGET:"):
+                target=line.split(":")[1].strip()
+        return action,target
+    except Exception:
+        return "unknown","unknown"
 
 if __name__ == "__main__":
     update_session()
     tests = [
-
-"shutdown"
+"check disk space",
+"open downloads folder",
+"show recent files",
+"system info"
     ]
     for test in tests:
         print(f"You: {test}")
