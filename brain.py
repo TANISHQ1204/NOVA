@@ -5,7 +5,7 @@ import json
 import datetime 
 from api_test import get_weather
 from memory import load_memory, update_memory, get_memory_context, update_session
-from automation import open_notepad, type_text, take_screenshot, close_notepad, open_browser
+from automation import open_notepad, type_text, take_screenshot, close_notepad, open_browser, open_app, shutdown_pc, restart_pc,get_battery,get_system_info,volume_mute,volume_down,volume_up
 
 load_dotenv()
 
@@ -101,9 +101,31 @@ def route_intent(intent, user_message):
         elif action=="open" and target=="browser":
             open_browser()
             return "Opening browser for you."
+        elif action=="open":
+            open_app(target)
+            return f"Opening {target} for you."
         elif action=="screenshot":
             take_screenshot()
             return "Screenshot taken and saved."
+        elif action=="shutdown":
+            shutdown_pc()
+            return "Shutting down in 5 seconds."
+        elif action=="restart":
+            restart_pc()
+            return "Restarting in 5 seconds."
+        elif action=="volume" and target=="up":
+            volume_up()
+            return "Volume increased."
+        elif action=="volume" and target=="down":
+            volume_down()
+            return "Volume decreased."
+        elif action=="volume" and target=="mute":
+            volume_mute()
+            return "Volume muted."
+        elif action=="battery":
+            return get_battery()
+        elif action=="system":
+            return get_system_info()
         else:
             return f"I understood you want to {action} {target} but I can't do that yet."
     
@@ -251,18 +273,18 @@ Reply:"""
 def parse_pc_command(user_message):
     prompt=f"""Extract the action and target from this PC control command.
 
-            Reply in exactly this format:
-            ACTION: <action>
-            TARGET: <target>
+    Reply in exactly this format:
+    ACTION: <action>
+    TARGET: <target>
 
-            Valid actions: open, close, screenshot, type
-            Valid targets: notepad, browser, screenshot, text
+    Valid actions: open, close, screenshot, type, lock, shutdown, restart, volume, system, battery
+    Valid targets: notepad, browser, any app name with EXACT correct capitalization (e.g. WhatsApp, YouTube, Spotify), pc, up, down, mute, info
 
-            If you cannot extract a clear action and target, reply with:
-            ACTION: unknown
-            TARGET: unknown
+    If you cannot extract a clear action and target, reply with:
+    ACTION: unknown
+    TARGET: unknown
 
-            Command: {user_message}"""
+    Command: {user_message}"""
     
     payload={
         "contents":[{"role":"user","parts":[{"text":prompt}]}],
@@ -296,9 +318,8 @@ def parse_pc_command(user_message):
 if __name__ == "__main__":
     update_session()
     tests = [
-        "can you please open notepad",
-        "fire up the browser",
-        "take a screenshot",
+
+"open youtube"
     ]
     for test in tests:
         print(f"You: {test}")
