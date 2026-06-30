@@ -6,21 +6,29 @@ const NOVA_IP='192.168.1.8';
 export default function HomeScreen(){
   const[message, setMessage]=useState('');
   const[chatLog, setChatLog]=useState<string[]>([]);
+  const[connected, setConnected]=useState(false);
+  const[thinking, setThinking]=useState(false);
   const ws=useRef<WebSocket|null>(null);
+  const scrollRef=useRef<ScrollView>(null);
 
   useEffect(()=>{
     ws.current=new WebSocket(`ws://${NOVA_IP}:8000/ws`);
 
     ws.current.onopen=()=>{
-      console.log('Connected to NOVA');
+      setConnected(true);
     };
 
     ws.current.onmessage=(event)=>{
+      setThinking(false);
       setChatLog((prev)=>[...prev, `NOVA: ${event.data}`]);
     };
 
     ws.current.onerror=(error)=>{
-      console.log('WebSocket error:',error);
+      setConnected(false);
+    };
+
+    ws.current.onclose=()=>{
+      setConnected(false);
     };
 
     return()=>{
@@ -28,10 +36,15 @@ export default function HomeScreen(){
     };
   },[]);
 
+  useEffect(()=>{
+    scrollRef.current?.scrollToEnd({animated:true});
+  }, [chatLog]);
+
   const sendMessage=()=>{
     if(ws.current&&message.trim()){
       ws.current?.send(message);
       setChatLog((prev)=>[...prev, `You: ${message}`]);
+      setThinking(true);
       setMessage('');
     }
   };
@@ -39,10 +52,14 @@ export default function HomeScreen(){
   return(
     <View style={styles.container}>
       <Text style={styles.title}>NOVA</Text>
-      <ScrollView style={styles.chatBox}>
+      <Text style={styles.status}>
+        {connected ? '\u25CF Connected' : '\u25CB Disconnected'}
+      </Text>
+      <ScrollView ref={scrollRef} style={styles.chatBox}>
         {chatLog.map((line, index)=>(
           <Text key={index} style={styles.chatLine}>{line}</Text>
         ))}
+        {thinking&&<Text style={styles.thinking}>NOVA is thinking...</Text>}
       </ScrollView>
       <TextInput
       style={styles.input}
@@ -66,14 +83,25 @@ const styles=StyleSheet.create({
     fontSize:32,
     color:'#00ffff',
     textAlign:'center',
-    marginBottom:20,
+    marginBottom:4,
   },
   chatBox:{
     flex:1,
     marginBottom:12,
   },
+  status:{
+    color:'#888',
+    textAlign:'center',
+    marginBottom:16,
+    fontSize:12,
+  },
   chatLine:{
     color:'#fff',
+    marginBottom:6,
+  },
+  thinking:{
+    color:'#00ffff',
+    fontStyle:'italic',
     marginBottom:6,
   },
   input:{
