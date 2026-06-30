@@ -99,16 +99,16 @@ def route_intent(intent, user_message):
         action,target=parse_pc_command(user_message)
         if action=="open" and target=="notepad":
             open_notepad()
-            return "Opening Notepad for you."
+            return "Notepad is open."
         elif action=="open" and target=="browser":
             open_browser()
-            return "Opening browser for you."
+            return "Browser is up."
         elif action=="open":
             open_app(target)
             return f"Opening {target} for you."
         elif action=="screenshot":
             take_screenshot()
-            return "Screenshot taken and saved."
+            return "Screenshot captured and saved."
         elif action=="shutdown":
             shutdown_pc()
             return "Shutting down in 5 seconds."
@@ -123,13 +123,13 @@ def route_intent(intent, user_message):
             return "Volume decreased."
         elif action=="volume" and target=="mute":
             volume_mute()
-            return "Volume muted."
+            return "Muted."
         elif action=="battery":
             return get_battery()
         elif action=="system":
             return get_system_info()
         else:
-            return f"I understood you want to {action} {target} but I can't do that yet."
+            return f"I am not sure how to do this yet."
         
     elif intent=="FILE_SYSTEM":
         action,target=parse_file_command(user_message)
@@ -145,6 +145,8 @@ def route_intent(intent, user_message):
             filepath,message=find_file(target)
             if filepath:
                 open_file(filepath)
+                return f"Found and opened {filepath.name}."
+            return f"I couldn't find anything matching {target}."
             return message
         else:
             return "I couldn't understand that file command."
@@ -215,10 +217,10 @@ def ask_nova(user_message):
                 import time
                 time.sleep(2)
             else:
-                return f"API error: {response.status_code}"
+                return f"I'm having trouble thinking right now."
         
         if response.status_code != 200:
-            return "Gemini servers are busy right now. Please try again in a moment."
+            return "My servers are busy right now. Please try again in a moment."
         
         data = response.json()
         reply = data["candidates"][0]["content"]["parts"][0]["text"]

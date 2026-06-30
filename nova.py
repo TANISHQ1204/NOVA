@@ -7,6 +7,7 @@ from hotkey import start_hotkey_listener, stop_hotkey_listener
 from api_test import get_weather
 from brain import ask_nova, detect_intent, route_intent
 from memory import update_session
+import datetime
 
 load_dotenv()
 
@@ -23,8 +24,15 @@ def activate_nova():
 
 def greet():
     update_session()
+    hour=datetime.datetime.now().hour
+    if hour<12:
+        greeting="Good morning"
+    elif hour<17:
+        greeting="Good afternoon"
+    else:
+        greeting="Good evening"
     print(f"Initializing {assistant_name} v{version}...")
-    speak(f"Welcome back {owner_name}.")
+    speak(f"{greeting}, {owner_name}. {assistant_name} is online and ready.")
     print(f"-"*40)
 
 def respond(user_input):
