@@ -12,24 +12,29 @@ export default function HomeScreen(){
   const scrollRef=useRef<ScrollView>(null);
 
   useEffect(()=>{
-    ws.current=new WebSocket(`ws://${NOVA_IP}:8000/ws`);
+    function connect(){
+      ws.current=new WebSocket(`ws://${NOVA_IP}:8000/ws`);
 
-    ws.current.onopen=()=>{
-      setConnected(true);
-    };
+      ws.current.onopen=()=>{
+        setConnected(true);
+      };
 
-    ws.current.onmessage=(event)=>{
-      setThinking(false);
-      setChatLog((prev)=>[...prev, `NOVA: ${event.data}`]);
-    };
+      ws.current.onmessage=(event)=>{
+        setThinking(false);
+        setChatLog((prev)=>[...prev, `NOVA: ${event.data}`]);
+      };
 
-    ws.current.onerror=(error)=>{
-      setConnected(false);
-    };
+      ws.current.onerror=()=>{
+        setConnected(false);
+      };
 
-    ws.current.onclose=()=>{
-      setConnected(false);
-    };
+      ws.current.onclose=()=>{
+        setConnected(false);
+        setTimeout(connect,3000);
+      };
+    }
+
+    connect();
 
     return()=>{
       ws.current?.close();

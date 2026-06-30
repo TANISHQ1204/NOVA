@@ -31,7 +31,7 @@ Given a user message, classify it into exactly one of these intents:
 GET_TIME - user wants to know the current time
 GET_WEATHER - user wants weather information
 TELL_JOKE - user wants to hear something funny
-PC_CONTROL - user wants to control their computer
+PC_CONTROL - user wants to control their computer, check battery, open apps
 FILE_SYSTEM - user wants to find files, check disk space, open folders, or get system info
 GENERAL - anything else
 
@@ -299,7 +299,7 @@ def parse_pc_command(user_message):
     ACTION: <action>
     TARGET: <target>
 
-    Valid actions: open, close, screenshot, type, lock, shutdown, restart, volume, system, battery
+    Valid actions: open, close, screenshot, type, lock, shutdown, restart, volume, battery, system
     Valid targets: notepad, browser, any app name with EXACT correct capitalization (e.g. WhatsApp, YouTube, Spotify), pc, up, down, mute, info
 
     If you cannot extract a clear action and target, reply with:
@@ -384,10 +384,7 @@ Command: {user_message}"""
 if __name__ == "__main__":
     update_session()
     tests = [
-"check disk space",
-"open downloads folder",
-"show recent files",
-"system info"
+"check battery"
     ]
     for test in tests:
         print(f"You: {test}")
