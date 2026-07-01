@@ -1,6 +1,6 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
-from brain import detect_intent, route_intent, conversation_history
+from brain import detect_intent, route_intent, conversation_history, full_chat_log
 from memory import update_session
 from monitor import start_monitoring, set_notifier
 import asyncio
@@ -8,6 +8,11 @@ from contextlib import asynccontextmanager
 from fastapi.responses import HTMLResponse
 from files import get_disk_space, get_system_info
 import psutil
+import webbrowser
+from speaker import speak
+import threading
+
+webbrowser.open("http://localhost:8000/dashboard")
 
 @asynccontextmanager
 async def lifespan(app:FastAPI):
@@ -336,7 +341,7 @@ def stats():
 
 @app.get("/history")
 def history():
-    return {"messages": conversation_history}
+    return {"messages": full_chat_log}
 
 @app.get("/")
 def root():
@@ -364,6 +369,7 @@ async def websocket_endpoint(websocket: WebSocket):
             intent=detect_intent(data)
             response=route_intent(intent,data)
             await websocket.send_text(response)
+            threading.Thread(target=speak, args=(response,), daemon=True).start()
     except WebSocketDisconnect:
         connected_clients.remove(websocket)
         print("Client Disconnected")

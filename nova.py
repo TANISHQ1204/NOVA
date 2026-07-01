@@ -8,6 +8,9 @@ from api_test import get_weather
 from brain import ask_nova, detect_intent, route_intent
 from memory import update_session
 import datetime
+import uvicorn
+import threading
+import webbrowser
 
 load_dotenv()
 
@@ -52,6 +55,14 @@ def respond(user_input):
     
 def main():
     global nova_active
+
+    def start_server():
+        uvicorn.run("server:app", host="0.0.0.0", port=8000, log_level="warning")
+
+    server_thread=threading.Thread(target=start_server, daemon=True)
+    server_thread.start()
+    time.sleep(1)
+
     greet()
     start_hotkey_listener(activate_nova)
     speak("Press F9 to activate me.")

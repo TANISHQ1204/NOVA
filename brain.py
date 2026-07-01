@@ -44,6 +44,7 @@ User message: {message}
 Intent:"""
 
 conversation_history=[]
+full_chat_log=[]
 
 def detect_intent(user_message):
     prompt=INTENT_PROMPT.format(message=user_message)
@@ -80,7 +81,7 @@ def detect_intent(user_message):
     except Exception:
         return "GENERAL"
     
-def route_intent(intent, user_message):
+def _route_intent(intent, user_message):
     if intent == "GET_TIME":
         now = datetime.datetime.now()
         return f"Current time is {now.strftime('%H:%M')}, {os.getenv('OWNER_NAME', 'sir')}."
@@ -153,6 +154,15 @@ def route_intent(intent, user_message):
     
     else:
         return ask_nova(user_message)
+    
+def route_intent(intent, user_message):
+    global full_chat_log
+    full_chat_log.append({"role":"user","parts":[{"text":user_message}]})
+    response=_route_intent(intent, user_message)
+    full_chat_log.append({"role":"model","parts":[{"text":response}]})
+    if len(full_chat_log)>40:
+        full_chat_log=full_chat_log[-40:]
+    return response
     
 def extract_city(user_message):
     prompt = f"""Extract the city name from this message.
