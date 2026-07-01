@@ -7,6 +7,8 @@ from api_test import get_weather
 from memory import load_memory, update_memory, get_memory_context, update_session
 from automation import open_notepad, type_text, take_screenshot, close_notepad, open_browser, open_app, shutdown_pc, restart_pc,get_battery,get_system_info,volume_mute,volume_down,volume_up
 from files import find_file, open_folder, get_disk_space, get_recent_files, get_system_info, open_file
+from tasks import send_whatsapp_message, search_youtube, search_google
+
 
 load_dotenv()
 
@@ -29,6 +31,7 @@ INTENT_PROMPT = """You are an intent classifier for an AI assistant called NOVA.
 Given a user message, classify it into exactly one of these intents:
 
 GET_TIME - user wants to know the current time
+COMPLEX_TASK - user wants to send a message, search YouTube, search Google, or perform multi-step app tasks
 GET_WEATHER - user wants weather information
 TELL_JOKE - user wants to hear something funny
 PC_CONTROL - user wants to control their computer, check battery, open apps
@@ -72,7 +75,7 @@ def detect_intent(user_message):
         data=response.json()
         intent=data["candidates"][0]["content"]["parts"][0]["text"].strip().upper()
 
-        valid_intents=["GET_TIME","GET_WEATHER","TELL_JOKE","PC_CONTROL","FILE_SYSTEM","GENERAL"]
+        valid_intents=["GET_TIME","COMPLEX_TASK","GET_WEATHER","TELL_JOKE","PC_CONTROL","FILE_SYSTEM","GENERAL"]
 
         if intent not in valid_intents:
             return "GENERAL"
@@ -85,6 +88,17 @@ def _route_intent(intent, user_message):
     if intent == "GET_TIME":
         now = datetime.datetime.now()
         return f"Current time is {now.strftime('%H:%M')}, {os.getenv('OWNER_NAME', 'sir')}."
+    
+    elif intent=="COMPLEX_TASK":
+        task,param1,param2=parse_complex_task(user_message)
+        if task=="whatsapp":
+            return send_whatsapp_message(param1, param2)
+        elif task=="youtube":
+            return search_youtube(param1)
+        elif task=="google":
+            return search_google(param1)
+        else:
+            return "I understood this is a complex task but I'm not sure how to do it yet."
     
     elif intent == "GET_WEATHER":
         city = extract_city(user_message)
@@ -301,6 +315,57 @@ Reply:"""
     
     except Exception:
         pass   
+
+def parse_complex_task(user_message):
+    prompt=f"""Extract the task details from this complex command.
+
+Reply in exactly this format:
+TASK: <task>
+PARAM1: <first parameter>
+PARAM2: <second parameter>
+
+Valid tasks: whatsapp, youtube, google
+For whatsapp — PARAM1=contact name, PARAM2=message text
+For youtube — PARAM1=search query, PARAM2=none
+For google — PARAM1=search query, PARAM2=none
+
+If unclear:
+TASK: unknown
+PARAM1: none
+PARAM2: none
+
+Command: {user_message}"""
+
+    payload={
+        "contents":[{"role":"user","parts":[{"text":prompt}]}],
+        "generationConfig":{
+            "temperature":0.1,
+            "maxOutputTokens":50
+        }
+    }
+    headers={"Content-Type":"application/json"}
+    url=f"{GEMINI_URL}?key={GEMINI_API_KEY}"
+
+    try:
+        response=requests.post(url,headers=headers,json=payload,timeout=10)
+        if response.status_code!=200:
+            return "unknown","none","none"
+        data=response.json()
+        result=data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        lines=[l.strip() for l in result.split("\n") if l.strip()]
+        task="unknown"
+        param1="none"
+        param2="none"
+        for line in lines:
+            if line.upper().startswith("TASK:"):
+                task=line.split(":")[1].strip().lower()
+            elif line.upper().startswith("PARAM1:"):
+                param1=line.split(":")[1].strip()
+            elif line.upper().startswith("PARAM2:"):
+                param2=line.split(":")[1].strip()
+        return task,param1,param2
+    except Exception:
+        return "unknown","none","none"
     
 def parse_pc_command(user_message):
     prompt=f"""Extract the action and target from this PC control command.
