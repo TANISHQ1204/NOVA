@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOVA — System Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-void:#0A0D10;
+    --panel:#12171C;
+    --panel-raised:#161D23;
+    --line:#232B32;
+    --line-bright:#324049;
+    --text-primary:#DCE4E8;
+    --text-muted:#6B7680;
+    --text-dim:#454E56;
+    --core-teal:#45D9C0;
+    --core-teal-dim:rgba(69,217,192,0.18);
+    --signal-amber:#FF9D4D;
+    --danger:#FF5D5D;
+    --font-display:'Chakra Petch',sans-serif;
+    --font-body:'IBM Plex Sans',sans-serif;
+    --font-mono:'IBM Plex Mono',monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg-void);
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:48px 48px;
+    background-position:-1px -1px;
+    color:var(--text-primary);
+    font-family:var(--font-body);
+    min-height:100vh;
+    padding:20px;
+  }
+
+  .frame{
+    max-width:1400px;
+    margin:0 auto;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+
+  /* ---------- Header ---------- */
+  .masthead{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:14px 22px;
+  }
+  .masthead-left{display:flex;align-items:center;gap:16px;}
+  .wordmark{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:22px;
+    letter-spacing:0.12em;
+    color:var(--text-primary);
+  }
+  .wordmark span{color:var(--core-teal);}
+  .status-chip{
+    display:flex;align-items:center;gap:8px;
+    font-family:var(--font-mono);
+    font-size:12px;
+    letter-spacing:0.05em;
+    color:var(--text-muted);
+    padding:4px 10px;
+    border:1px solid var(--line);
+    border-radius:20px;
+  }
+  .status-dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--text-dim);
+    box-shadow:none;
+    transition:background .3s, box-shadow .3s;
+  }
+  .status-dot.online{
+    background:var(--core-teal);
+    box-shadow:0 0 8px var(--core-teal);
+  }
+  .status-dot.offline{
+    background:var(--danger);
+    box-shadow:0 0 8px var(--danger);
+  }
+  .masthead-right{
+    font-family:var(--font-mono);
+    font-size:13px;
+    color:var(--text-muted);
+    text-align:right;
+    letter-spacing:0.03em;
+  }
+  .masthead-right .date{color:var(--text-dim);font-size:11px;}
+
+  /* ---------- Main grid ---------- */
+  .console{
+    display:grid;
+    grid-template-columns:280px 1fr 340px;
+    gap:16px;
+    align-items:start;
+  }
+  @media (max-width:1000px){
+    .console{grid-template-columns:1fr;}
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:18px;
+  }
+  .panel-label{
+    font-family:var(--font-display);
+    font-size:12px;
+    font-weight:600;
+    letter-spacing:0.18em;
+    color:var(--text-muted);
+    text-transform:uppercase;
+    margin:0 0 16px 0;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .panel-label .tick{color:var(--text-dim);font-weight:400;letter-spacing:0;}
+
+  /* ---------- System stats ---------- */
+  .stat-row{margin-bottom:16px;}
+  .stat-row:last-child{margin-bottom:0;}
+  .stat-head{
+    display:flex;justify-content:space-between;
+    font-family:var(--font-mono);
+    font-size:12px;
+    margin-bottom:6px;
+  }
+  .stat-name{color:var(--text-muted);letter-spacing:0.05em;}
+  .stat-val{color:var(--text-primary);font-weight:500;}
+  .stat-track{
+    height:5px;
+    background:var(--line);
+    border-radius:2px;
+    overflow:hidden;
+    position:relative;
+  }
+  .stat-fill{
+    height:100%;
+    background:var(--core-teal);
+    border-radius:2px;
+    width:0%;
+    transition:width .6s ease;
+  }
+  .stat-fill.warn{background:var(--signal-amber);}
+  .stat-fill.crit{background:var(--danger);}
+
+  .divider{height:1px;background:var(--line);margin:18px 0;}
+
+  .meta-line{
+    display:flex;justify-content:space-between;
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--text-dim);
+    margin-bottom:8px;
+  }
+  .meta-line b{color:var(--text-muted);font-weight:500;}
+
+  /* ---------- Arc reactor ---------- */
+  .core-panel{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    min-height:420px;
+    position:relative;
+  }
+  .core-svg{width:280px;height:280px;}
+  .ring-outer{
+    transform-origin:150px 150px;
+    animation:spin-slow 40s linear infinite;
+  }
+  .ring-inner{
+    transform-origin:150px 150px;
+    animation:spin-slow-rev 28s linear infinite;
+  }
+  @keyframes spin-slow{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+  @keyframes spin-slow-rev{from{transform:rotate(360deg);}to{transform:rotate(0deg);}}
+
+  .core-center{
+    fill:var(--core-teal);
+    filter:drop-shadow(0 0 6px var(--core-teal));
+    animation:pulse-core 2.6s ease-in-out infinite;
+  }
+  @keyframes pulse-core{
+    0%,100%{opacity:0.75;r:14;}
+    50%{opacity:1;r:17;}
+  }
+  .core-panel.listening .core-center{
+    animation:pulse-core-fast 0.9s ease-in-out infinite;
+  }
+  @keyframes pulse-core-fast{
+    0%,100%{opacity:0.85;r:14;}
+    50%{opacity:1;r:20;}
+  }
+
+  .core-caption{
+    margin-top:18px;
+    text-align:center;
+  }
+  .core-state{
+    font-family:var(--font-display);
+    font-size:15px;
+    font-weight:600;
+    letter-spacing:0.15em;
+    text-transform:uppercase;
+    color:var(--core-teal);
+  }
+  .core-sub{
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--text-dim);
+    margin-top:4px;
+    letter-spacing:0.05em;
+  }
+
+  .ping-form{
+    margin-top:22px;
+    display:flex;
+    width:100%;
+    max-width:320px;
+    gap:8px;
+  }
+  .ping-form input{
+    flex:1;
+    background:var(--panel-raised);
+    border:1px solid var(--line);
+    border-radius:3px;
+    color:var(--text-primary);
+    font-family:var(--font-body);
+    font-size:13px;
+    padding:9px 12px;
+  }
+  .ping-form input:focus{
+    outline:none;
+    border-color:var(--core-teal);
+  }
+  .ping-form button{
+    background:var(--core-teal-dim);
+    border:1px solid var(--core-teal);
+    color:var(--core-teal);
+    font-family:var(--font-display);
+    font-size:12px;
+    letter-spacing:0.08em;
+    border-radius:3px;
+    padding:0 16px;
+    cursor:pointer;
+    transition:background .2s;
+  }
+  .ping-form button:hover{background:rgba(69,217,192,0.32);}
+  .ping-form button:focus-visible, .ping-form input:focus-visible{
+    outline:2px solid var(--core-teal);
+    outline-offset:2px;
+  }
+
+  /* ---------- Conversation log ---------- */
+  .log-panel{display:flex;flex-direction:column;height:100%;}
+  .log-scroll{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    max-height:480px;
+    overflow-y:auto;
+    padding-right:4px;
+  }
+  .log-scroll::-webkit-scrollbar{width:5px;}
+  .log-scroll::-webkit-scrollbar-thumb{background:var(--line-bright);border-radius:3px;}
+  .log-empty{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-dim);
+    text-align:center;
+    padding:40px 10px;
+    border:1px dashed var(--line);
+    border-radius:4px;
+  }
+
+  .msg{
+    border-radius:4px;
+    padding:9px 12px;
+    font-size:13px;
+    line-height:1.45;
+    max-width:100%;
+  }
+  .msg-head{
+    font-family:var(--font-mono);
+    font-size:10px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    margin-bottom:4px;
+    opacity:0.7;
+  }
+  .msg.user{
+    background:var(--panel-raised);
+    border:1px solid var(--line);
+    align-self:flex-end;
+    color:var(--text-primary);
+  }
+  .msg.user .msg-head{color:var(--text-muted);text-align:right;}
+  .msg.nova{
+    background:var(--core-teal-dim);
+    border:1px solid rgba(69,217,192,0.35);
+    color:var(--text-primary);
+  }
+  .msg.nova .msg-head{color:var(--core-teal);}
+  .msg.pending .msg-head{color:var(--signal-amber);}
+  .msg.pending{border-style:dashed;opacity:0.8;}
+
+  /* ---------- Footer status bar ---------- */
+  .statusbar{
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--text-dim);
+    padding:10px 22px;
+    border:1px solid var(--line);
+    border-radius:4px;
+    background:var(--panel);
+  }
+  .statusbar b{color:var(--text-muted);font-weight:500;}
+
+  @media (prefers-reduced-motion: reduce){
+    .ring-outer,.ring-inner,.core-center{animation:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<div class="frame">
+
+  <header class="masthead">
+    <div class="masthead-left">
+      <div class="wordmark">NOVA<span>_</span>CONSOLE</div>
+      <div class="status-chip">
+        <span class="status-dot" id="conn-dot"></span>
+        <span id="conn-label">CONNECTING</span>
+      </div>
+    </div>
+    <div class="masthead-right">
+      <div id="clock">--:--:--</div>
+      <div class="date" id="datestr">-- --- ----</div>
+    </div>
+  </header>
+
+  <div class="console">
+
+    <!-- SYSTEM STATS -->
+    <section class="panel">
+      <div class="panel-label">System <span class="tick">01</span></div>
+
+      <div class="stat-row">
+        <div class="stat-head"><span class="stat-name">CPU</span><span class="stat-val" id="cpu-val">--%</span></div>
+        <div class="stat-track"><div class="stat-fill" id="cpu-fill"></div></div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-head"><span class="stat-name">RAM</span><span class="stat-val" id="ram-val">--%</span></div>
+        <div class="stat-track"><div class="stat-fill" id="ram-fill"></div></div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-head"><span class="stat-name">BATTERY</span><span class="stat-val" id="bat-val">--%</span></div>
+        <div class="stat-track"><div class="stat-fill" id="bat-fill"></div></div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-head"><span class="stat-name">DISK FREE</span><span class="stat-val" id="disk-val">-- GB</span></div>
+        <div class="stat-track"><div class="stat-fill" id="disk-fill"></div></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="meta-line"><span>Last poll</span><b id="last-poll">--</b></div>
+      <div class="meta-line"><span>Uptime</span><b id="uptime">--</b></div>
+      <div class="meta-line"><span>Endpoint</span><b id="endpoint-label">--</b></div>
+    </section>
+
+    <!-- ARC REACTOR / CORE -->
+    <section class="panel core-panel" id="core-panel">
+      <svg class="core-svg" viewBox="0 0 300 300">
+        <circle cx="150" cy="150" r="140" fill="none" stroke="#232B32" stroke-width="1"/>
+        <g class="ring-outer">
+          <circle cx="150" cy="150" r="118" fill="none" stroke="#324049" stroke-width="1.5" stroke-dasharray="2 10"/>
+          <circle cx="150" cy="150" r="118" fill="none" stroke="#45D9C0" stroke-width="1.5" stroke-dasharray="4 300" stroke-linecap="round" opacity="0.9"/>
+        </g>
+        <g class="ring-inner">
+          <circle cx="150" cy="150" r="92" fill="none" stroke="#232B32" stroke-width="10"/>
+          <g stroke="#45D9C0" stroke-width="2" opacity="0.55">
+            <line x1="150" y1="58" x2="150" y2="70"/>
+            <line x1="150" y1="230" x2="150" y2="242"/>
+            <line x1="58" y1="150" x2="70" y2="150"/>
+            <line x1="230" y1="150" x2="242" y2="150"/>
+            <line x1="84" y1="84" x2="93" y2="93"/>
+            <line x1="207" y1="207" x2="216" y2="216"/>
+            <line x1="216" y1="84" x2="207" y2="93"/>
+            <line x1="93" y1="207" x2="84" y2="216"/>
+          </g>
+        </g>
+        <circle cx="150" cy="150" r="56" fill="none" stroke="#232B32" stroke-width="1"/>
+        <circle class="core-center" cx="150" cy="150" r="14"/>
+      </svg>
+      <div class="core-caption">
+        <div class="core-state" id="core-state">STANDBY</div>
+        <div class="core-sub" id="core-sub">awaiting connection</div>
+      </div>
+      <form class="ping-form" id="ping-form">
+        <input type="text" id="ping-input" placeholder="Send a command to NOVA..." autocomplete="off">
+        <button type="submit">SEND</button>
+      </form>
+    </section>
+
+    <!-- CONVERSATION LOG -->
+    <section class="panel log-panel">
+      <div class="panel-label">Conversation <span class="tick">02</span></div>
+      <div class="log-scroll" id="log-scroll">
+        <div class="log-empty" id="log-empty">No messages yet. Say something to NOVA or type a command above.</div>
+      </div>
+    </section>
+
+  </div>
+
+  <footer class="statusbar">
+    <span>SOCKET <b id="ws-state">idle</b></span>
+    <span>INTENTS ROUTED <b id="msg-count">0</b></span>
+    <span>BUILD <b>nova-console v1</b></span>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  const host = window.location.hostname;
+  const port = window.location.port ? (':' + window.location.port) : '';
+  const httpBase = window.location.protocol + '//' + host + port;
+  const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = wsProto + '//' + host + port + '/ws';
+
+  document.getElementById('endpoint-label').textContent = host + port;
+
+  // ---------- Clock ----------
+  function tickClock(){
+    const now = new Date();
+    document.getElementById('clock').textContent = now.toLocaleTimeString('en-US', {hour12:false});
+    document.getElementById('datestr').textContent = now.toLocaleDateString('en-US', {weekday:'short', day:'2-digit', month:'short', year:'numeric'});
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  // ---------- Boot time for uptime ----------
+  const bootTime = Date.now();
+  function tickUptime(){
+    const secs = Math.floor((Date.now() - bootTime) / 1000);
+    const h = String(Math.floor(secs/3600)).padStart(2,'0');
+    const m = String(Math.floor((secs%3600)/60)).padStart(2,'0');
+    const s = String(secs%60).padStart(2,'0');
+    document.getElementById('uptime').textContent = h+':'+m+':'+s;
+  }
+  setInterval(tickUptime, 1000);
+  tickUptime();
+
+  // ---------- Stat bar helper ----------
+  function setBar(fillId, valId, pct, label, invert){
+    const fill = document.getElementById(fillId);
+    const val = document.getElementById(valId);
+    const clamped = Math.max(0, Math.min(100, pct));
+    fill.style.width = clamped + '%';
+    val.textContent = label !== undefined ? label : (Math.round(clamped) + '%');
+    fill.classList.remove('warn','crit');
+    const dangerHigh = clamped >= 85;
+    const dangerLow = invert && clamped <= 15;
+    if (dangerHigh || dangerLow) fill.classList.add('crit');
+    else if (clamped >= 65 && !invert) fill.classList.add('warn');
+  }
+
+  // ---------- Poll /stats ----------
+  async function pollStats(){
+    try{
+      const res = await fetch(httpBase + '/stats');
+      if(!res.ok) throw new Error('bad status');
+      const d = await res.json();
+      if (typeof d.cpu === 'number') setBar('cpu-fill','cpu-val', d.cpu);
+      if (typeof d.ram === 'number') setBar('ram-fill','ram-val', d.ram);
+      if (typeof d.battery === 'number') setBar('bat-fill','bat-val', d.battery, undefined, true);
+      if (d.disk_free !== undefined && d.disk_free !== null){
+        const raw = d.disk_free;
+        const numeric = typeof raw === 'number' ? raw : parseFloat(String(raw).replace(/[^0-9.]/g, ''));
+        const label = typeof raw === 'number' ? (raw.toFixed(1) + ' GB') : String(raw);
+        if (!isNaN(numeric)){
+          // scale against total disk if provided, else just show a filled indicator capped at 100
+          const pct = typeof d.disk_total === 'number' && d.disk_total > 0
+            ? (numeric / d.disk_total) * 100
+            : Math.min(100, numeric);
+          setBar('disk-fill','disk-val', pct, label);
+        } else {
+          document.getElementById('disk-val').textContent = label;
+        }
+      } else {
+        document.getElementById('disk-val').textContent = 'n/a';
+      }
+      document.getElementById('last-poll').textContent = new Date().toLocaleTimeString('en-US',{hour12:false});
+    }catch(e){
+      document.getElementById('last-poll').textContent = 'error';
+    }
+  }
+  pollStats();
+  setInterval(pollStats, 3000);
+
+  // ---------- Conversation log ----------
+  const logScroll = document.getElementById('log-scroll');
+  const logEmpty = document.getElementById('log-empty');
+  let msgCount = 0;
+
+  function addMessage(role, text, pending){
+    if (logEmpty) logEmpty.remove();
+    const div = document.createElement('div');
+    div.className = 'msg ' + role + (pending ? ' pending' : '');
+    const head = document.createElement('div');
+    head.className = 'msg-head';
+    head.textContent = role === 'user' ? 'YOU' : (pending ? 'NOVA · THINKING' : 'NOVA');
+    const body = document.createElement('div');
+    body.textContent = text;
+    div.appendChild(head);
+    div.appendChild(body);
+    logScroll.appendChild(div);
+    logScroll.scrollTop = logScroll.scrollHeight;
+    if (!pending){
+      msgCount++;
+      document.getElementById('msg-count').textContent = msgCount;
+    }
+    return div;
+  }
+
+  // Full re-render from the server's own log on every sync. This is the
+  // single source of truth, so messages sent from ANY device (phone, dashboard,
+  // etc.) show up here without the dashboard needing to be told directly.
+  let lastHistorySignature = '';
+
+  function renderHistory(messages){
+    const signature = messages.length + ':' + JSON.stringify(messages[messages.length - 1] || '');
+    if (signature === lastHistorySignature) return; // nothing new, skip redraw
+    lastHistorySignature = signature;
+
+    logScroll.innerHTML = '';
+    msgCount = 0;
+
+    if (messages.length === 0){
+      logScroll.appendChild(logEmptyTemplate());
+      return;
+    }
+
+    messages.forEach(m => {
+      const role = (m.role === 'user' || m.sender === 'user') ? 'user' : 'nova';
+      const text = m.parts?.[0]?.text || JSON.stringify(m);
+      addMessage(role, text, false);
+    });
+    document.getElementById('msg-count').textContent = msgCount;
+  }
+
+  function logEmptyTemplate(){
+    const div = document.createElement('div');
+    div.className = 'log-empty';
+    div.textContent = 'No messages yet. Say something to NOVA or type a command above.';
+    return div;
+  }
+
+  async function loadHistory(){
+    try{
+      const res = await fetch(httpBase + '/history');
+      if(!res.ok) return;
+      const d = await res.json();
+      const messages = d.messages || d.history || [];
+      renderHistory(messages);
+    }catch(e){ /* history optional */ }
+  }
+  loadHistory();
+  setInterval(loadHistory, 2500);
+
+  // ---------- Core state ----------
+  const corePanel = document.getElementById('core-panel');
+  const coreState = document.getElementById('core-state');
+  const coreSub = document.getElementById('core-sub');
+
+  function setCore(state, sub, listening){
+    coreState.textContent = state;
+    coreSub.textContent = sub;
+    corePanel.classList.toggle('listening', !!listening);
+  }
+
+  // ---------- WebSocket ----------
+  const connDot = document.getElementById('conn-dot');
+  const connLabel = document.getElementById('conn-label');
+  const wsState = document.getElementById('ws-state');
+  let socket = null;
+  let pendingBubble = null;
+  let retryDelay = 3000;
+
+  function setConn(state){
+    connDot.className = 'status-dot ' + state;
+    connLabel.textContent = state === 'online' ? 'ONLINE' : (state === 'offline' ? 'OFFLINE' : 'CONNECTING');
+    wsState.textContent = state;
+  }
+
+  function connect(){
+    setConn('connecting');
+    setCore('STANDBY','establishing link');
+    try{
+      socket = new WebSocket(wsUrl);
+    }catch(e){
+      setConn('offline');
+      scheduleReconnect();
+      return;
+    }
+
+    socket.onopen = () => {
+      setConn('online');
+      setCore('ONLINE','link established');
+    };
+
+    socket.onclose = () => {
+      setConn('offline');
+      setCore('OFFLINE','connection lost — retrying');
+      scheduleReconnect();
+    };
+
+    socket.onerror = () => {
+      socket.close();
+    };
+
+    socket.onmessage = (event) => {
+      let payload;
+      try{ payload = JSON.parse(event.data); }
+      catch(e){ payload = { response: event.data }; }
+
+      if (pendingBubble){
+        pendingBubble.remove();
+        pendingBubble = null;
+      }
+
+      // Don't render here — /history sync (every 2.5s) will pick this exchange
+      // up from the server's own log and re-render everything consistently,
+      // which is also how messages from the phone (or any device) show up.
+      setCore('ONLINE', payload.intent ? ('intent: ' + payload.intent) : 'link established');
+      loadHistory();
+    };
+  }
+
+  function scheduleReconnect(){
+    setTimeout(connect, retryDelay);
+  }
+
+  connect();
+
+  // ---------- Command form ----------
+  const form = document.getElementById('ping-form');
+  const input = document.getElementById('ping-input');
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+
+    if (socket && socket.readyState === WebSocket.OPEN){
+      socket.send(text);
+      setCore('LISTENING','processing command', true);
+      pendingBubble = addMessage('nova', '...', true);
+    } else {
+      addMessage('nova', 'Not connected — command not sent.', false);
+    }
+    input.value = '';
+  });
+})();
+</script>
+
+</body>
+</html>
