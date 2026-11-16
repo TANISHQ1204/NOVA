@@ -15,7 +15,7 @@ import webbrowser
 load_dotenv()
 
 assistant_name=os.getenv("ASSISTANT_NAME","NOVA")
-owner_name=os.getenv("OWNER_NAME","SIR")
+owner_name=os.getenv("OWNER_NAME","sir")
 version=os.getenv("VERSION","1.0")
 voice_mode=True
 nova_active=False
